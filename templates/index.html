@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculatrice de Multiplication de Matrices</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #f4f6f8;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .calculator-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 900px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .matrix-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            min-height: 120px;
+            resize: vertical;
+            margin-top: 5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #ff6b35;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #e65a2e;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .result-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result-container.visible {
+            display: block;
+        }
+
+        .result-title {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #555;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .matrix-display {
+            background: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+            min-height: 150px;
+            overflow-x: auto;
+        }
+
+        .matrix-display pre {
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .calculator-container {
+                margin: 10px;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator-container">
+        <h2>Calculatrice de Multiplication de Matrices</h2>
+        
+        <form id="matrixForm">
+            <div class="form-group">
+                <label for="matrixA">Matrice A (lignes x colonnes)</label>
+                <textarea class="matrix-input" id="matrixA" rows="4" cols="50" 
+                          placeholder="Exemple: [[1,2,3],[4,5,6]] (2x3)" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="matrixB">Matrice B (colonnes x lignes)</label>
+                <textarea class="matrix-input" id="matrixB" rows="4" cols="50"
+                          placeholder="Exemple: [[7,8],[9,10],[11,12]] (3x2)"></textarea>
+            </div>
+            
+            <button type="submit" class="btn">Multiplier les matrices</button>
+        </form>
+
+        <div class="error" id="errorDiv"></div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="result-title">
+                <span>Résultat : A × B</span>
+            </div>
+            
+            <div class="matrix-display">
+                <pre id="matrixAView"></pre>
+            </div>
+            
+            <div class="matrix-display">
+                <pre id="matrixBView"></pre>
+            </div>
+            
+            <div class="matrix-display">
+                <pre id="resultView"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('matrixForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const errorDiv = document.getElementById('errorDiv');
+            const resultContainer = document.getElementById('resultContainer');
+            const matrixAView = document.getElementById('matrixAView');
+            const matrixBView = document.getElementById('matrixBView');
+            const resultView = document.getElementById('resultView');
+            
+            // Clear previous results
+            errorDiv.classList.remove('show');
+            errorDiv.textContent = '';
+            resultContainer.classList.remove('visible');
+            matrixAView.textContent = '';
+            matrixBView.textContent = '';
+            resultView.textContent = '';
+            
+            const matrixA = document.getElementById('matrixA').value.trim();
+            const matrixB = document.getElementById('matrixB').value.trim();
+            
+            if (!matrixA || !matrixB) {
+                errorDiv.textContent = 'Veuillez remplir les deux matrices.';
+                errorDiv.classList.add('show');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/multiply', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        matrix_a: matrixA,
+                        matrix_b: matrixB
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    errorDiv.textContent = data.error;
+                    errorDiv.classList.add('show');
+                    return;
+                }
+                
+                // Display matrices
+                matrixAView.textContent = 'Matrice A (' + data.matrix_a.length + 'x' + data.matrix_a[0].length + '):\n' + 
+                    data.matrix_a.map(row => row.join(', ')).join('\n');
+                
+                matrixBView.textContent = 'Matrice B (' + data.matrix_b.length + 'x' + data.matrix_b[0].length + '):\n' + 
+                    data.matrix_b.map(row => row.join(', ')).join('\n');
+                
+                // Display result
+                resultView.textContent = 'Matrice Résultat (' + data.result.length + 'x' + data.result[0].length + '):\n' +
+                    data.result.map(row => row.join(', ')).join('\n');
+                
+                resultContainer.classList.add('visible');
+                
+            } catch (error) {
+                errorDiv.textContent = 'Erreur: ' + error.message;
+                errorDiv.classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html>
